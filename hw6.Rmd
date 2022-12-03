@@ -9,9 +9,11 @@ output: github_document
 
 ```{r}
 library(tidyverse)
+library(modelr)
+library(mgcv)
 ```
 
-> Create a `city_state` variable (e.g. \"Baltimore, MD\"), and a binary variable indicating whether the homicide is solved. Omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO -- these don\'t report victim race. Also omit Tulsa, AL -- this is a data entry mistake. For this problem, limit your analysis those for whom `victim_race` is `white` or `black`. Be sure that`victim_age` is numeric.
+> Create a `city_state` variable (e.g. "Baltimore, MD"), and a binary variable indicating whether the homicide is solved. Omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO -- these don't report victim race. Also omit Tulsa, AL -- this is a data entry mistake. For this problem, limit your analysis those for whom `victim_race` is `white` or `black`. Be sure that`victim_age` is numeric.
 
 ```{r}
 homicide=
@@ -44,7 +46,7 @@ Homicide_Bal_rg= glm(status ~ victim_age + victim_sex + victim_race, family=bino
    knitr::kable(digits = 3) 
 ```
 
-> Now run `glm` for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing male victims to female victims. Do this within a \"tidy\" pipeline, making use of `purrr::map`, list columns, and `unnest` as necessary to create a dataframe with estimated ORs and CIs for each city.
+> Now run `glm` for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing male victims to female victims. Do this within a "tidy" pipeline, making use of `purrr::map`, list columns, and `unnest` as necessary to create a dataframe with estimated ORs and CIs for each city.
 
 ```{r}
 homicide_nested =
@@ -84,3 +86,90 @@ homicide_rg %>%
 ```
 
 As showing in the plot the Odds ratio comparing male victim to female victim range from approximately 0.5-4. In Albuquerque, NM where the odds ratio is the lowest, the odds of become a victim for male is approx. 0.5 times the odds for female. In New York, NY where the odds ratio is the highest, the odds of becoming a victim for male is approx. 3.8 times the odds for female.
+
+### Problem 3
+
+> Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).
+
+```{r}
+birthweight=
+read_csv("./data/birthweight.csv") %>%
+  janitor:: clean_names() %>%
+   mutate(
+    babysex = as.factor(babysex),
+    frace = as.factor(frace),
+    malform=as.factor(malform),
+    id=row_number()) %>%
+  drop_na() 
+
+```
+
+\>Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values -- use `add_predictions` and `add_residuals` in making this plot.
+
+```{r}
+birthweight %>%
+  ggplot(aes(x=bwt, wtgain))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, delwt))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, bhead))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, blength))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, mheight))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, momage))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, ppbmi))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, fincome))+ 
+  geom_point(alpha = .5)
+
+birthweight %>%
+  ggplot(aes(x=bwt, menarche))+ 
+  geom_point(alpha = .5)
+```
+
+As from the ggplot examine linearity between the outcome and several predictors, the baby length at birth, baby head circumference has the best linear correlation with baby birthweight, all other variable do not suggest linearity. Baby's length will be used as predictors in building the model.
+
+```{r}
+train_df=sample_n(birthweight, 80)
+test_df=anti_join(birthweight, train_df, by="id")
+ggplot(train_df, aes(x = bwt, y = blength)) + 
+  geom_point() + 
+  geom_point(data = test_df, color = "red")
+
+linear_mod = lm (bwt~ blength , data = train_df)
+smooth_mod =gam(bwt ~ s(blength), data = train_df)
+wiggly_mod =gam(bwt ~ s(blength, k = 5), sp = 10e-6, data =train_df)
+  
+rmse(linear_mod, test_df)
+rmse(smooth_mod, test_df)
+rmse(wiggly_mod, test_df)
+
+train_df %>% 
+  gather_predictions(linear_mod, smooth_mod) %>% 
+  gather_residuals(linear_mod, smooth_mod)%>%
+  ggplot(aes(x = pred, y = resid)) + 
+  geom_point() + 
+  geom_line(aes(y = pred), color = "red") + 
+  facet_wrap(~model)
+```
+
+Since the RMSE for linear model and the smooth model are the same, as well as the prediction and residual distribution are the same, the simplistic linear model will be used for this model.
+
+In the plot of model residual against fitted values, there is heteroskedasticity in the distribution of the residual, the reason why for the separation between fitted value and the residual might be the model itself contains few variable, therefore affect the prediction.
