@@ -1,0 +1,41 @@
+---
+title: "p8105_hw6_jq2342"
+author: "Junyu QI"
+date: "`r Sys.Date()`"
+output: github_document
+---
+
+### Problem 2 
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+homicide=
+read_csv("./data/homicide-data.csv") %>%
+  janitor:: clean_names() %>%
+  unite("city_state", city:state, sep=", ", remove=FALSE) %>%
+  select (-city, -state) %>%
+  mutate(status= case_when(disposition %in% c("Closed without arrest","Open/No arrest") ~"unsolved", 
+                disposition %in% "Closed by arrest" ~"solved"),
+                 victim_age=as.numeric(victim_age)) %>%
+  filter(!city_state  %in% c("Dallas, TX","Phoenix, AZ", "Kansas City, MO", " Tulsa, AL" )) %>%
+  filter(victim_race %in% c("White", "Black"))
+
+
+Homicide_Bal=
+  homicide %>%
+  filter(city_state %in% "Baltimore, MD") %>%
+  mutate(
+    victim_sex = as.factor(victim_sex),
+    victim_race = as.factor(victim_race),
+    status=as.factor(status))
+
+  Homicide_Bal_rg= glm(status ~ victim_age + victim_sex + victim_race, family=binomial, data=Homicide_Bal) %>%
+  broom::tidy () %>%
+    mutate(OR = exp(estimate), ci_lower=exp, ci_upper=estimate+1.96*std.error)  %>%
+    filter(term %in% "victim_sexMale")%>%
+    filter(estimate, ci_lower, ci_upper, OR)
+ 
+```
