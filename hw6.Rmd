@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: github_document
 ---
 
-### Problem 2 
+### Problem 2
 
 ```{r}
 library(tidyverse)
@@ -34,7 +34,7 @@ Homicide_Bal=
 
   Homicide_Bal_rg= glm(status ~ victim_age + victim_sex + victim_race, family=binomial, data=Homicide_Bal) %>%
   broom::tidy () %>%
-    mutate(OR = exp(estimate), ci_lower=exp, ci_upper=estimate+1.96*std.error)  %>%
+    mutate(OR = exp(estimate), ci_lower=estimate-1.96*std.error, ci_upper=estimate+1.96*std.error)  %>%
     filter(term %in% "victim_sexMale")%>%
     filter(estimate, ci_lower, ci_upper, OR)
  
